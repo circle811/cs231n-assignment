@@ -29,7 +29,21 @@ def softmax_loss_naive(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  for i in range(num_train):
+    scores = np.dot(X[i], W)
+    exp_scores = np.exp(scores - np.max(scores))
+    probabilities = exp_scores / np.sum(exp_scores)
+    loss += -np.log(probabilities[y[i]])
+    dscores = probabilities.copy()
+    dscores[y[i]] -= 1
+    dW += X[i][:, np.newaxis] * dscores
+
+  loss /= num_train
+  dW /= num_train
+
+  loss += reg * np.sum(W * W)
+  dW += (2 * reg) * W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
@@ -44,8 +58,8 @@ def softmax_loss_vectorized(W, X, y, reg):
   Inputs and outputs are the same as softmax_loss_naive.
   """
   # Initialize the loss and gradient to zero.
-  loss = 0.0
-  dW = np.zeros_like(W)
+  # loss = 0.0
+  # dW = np.zeros_like(W)
 
   #############################################################################
   # TODO: Compute the softmax loss and its gradient using no explicit loops.  #
@@ -53,7 +67,16 @@ def softmax_loss_vectorized(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  index = (np.arange(num_train), y)
+  scores = X @ W
+  exp_scores = np.exp(scores - np.max(scores, axis=1)[:, np.newaxis])
+  probabilities = exp_scores / np.sum(exp_scores, axis=1)[:, np.newaxis]
+  loss = -np.sum(np.log(probabilities[index])) / num_train + reg * np.sum(W * W)
+
+  dscores = probabilities.copy()
+  dscores[index] -= 1
+  dW = (X.T @ dscores) / num_train + (2 * reg) * W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
