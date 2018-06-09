@@ -139,14 +139,21 @@ class CaptioningRNN(object):
         # Note also that you are allowed to make use of functions from layers.py   #
         # in your implementation, if needed.                                       #
         ############################################################################
+        if self.cell_type == 'rnn':
+            forward = rnn_forward
+            backward = rnn_backward
+        else:
+            forward = lstm_forward
+            backward = lstm_backward
+
         h0, cache0 = affine_forward(features, W_proj, b_proj)
         x, cache1 = word_embedding_forward(captions_in, W_embed)
-        h, cache2 = rnn_forward(x, h0, Wx, Wh, b)
+        h, cache2 = forward(x, h0, Wx, Wh, b)
         scores, cache3 = temporal_affine_forward(h, W_vocab, b_vocab)
         loss, dscores = temporal_softmax_loss(scores, captions_out, mask, verbose=False)
 
         dh, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dscores, cache3)
-        dx, dh0, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dh, cache2)
+        dx, dh0, grads['Wx'], grads['Wh'], grads['b'] = backward(dh, cache2)
         grads['W_embed'] = word_embedding_backward(dx, cache1)
         _, grads['W_proj'], grads['b_proj'] = affine_backward(dh0, cache0)
         ############################################################################
@@ -215,9 +222,13 @@ class CaptioningRNN(object):
         captions = np.full((N, max_length), self._null)
         captions[:, 0] = self._start
         h, _ = affine_forward(features, W_proj, b_proj)
+        c = np.zeros_like(h)
         for i in range(max_length - 1):
             x, _ = word_embedding_forward(captions[:, i], W_embed)
-            h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            if self.cell_type == 'rnn':
+                h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+            else:
+                h, c, _ = lstm_step_forward(x, h, c, Wx, Wh, b)
             scores, _ = affine_forward(h, W_vocab, b_vocab)
             captions[:, i + 1] = np.argmax(scores, axis=1)
         ############################################################################
